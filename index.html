@@ -181,16 +181,18 @@
                   placeholder="Filter by Message"
                   class="px-4 py-2 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                 />
-                <select
-                  id="filter-tone"
-                  class="px-4 py-2 border border-slate-700 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                >
-                  <option value="">All Tones</option>
-                  <option>Professional</option>
-                  <option>Casual</option>
-                  <option>Friendly</option>
-                  <option>Urgent</option>
-                </select>
+                <input
+                  id="filter-media"
+                  type="text"
+                  placeholder="Filter by Media"
+                  class="px-4 py-2 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
+                <input
+                  id="filter-delivered-at"
+                  type="date"
+                  placeholder="Filter by Delivered At"
+                  class="px-4 py-2 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-400 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
                 <button
                   id="filter-btn"
                   type="button"
@@ -198,48 +200,32 @@
                 >
                   Apply Filter
                 </button>
+                <button
+                  id="clear-filter-btn"
+                  type="button"
+                  class="bg-slate-700 text-white font-medium px-6 py-2 rounded-lg transition ml-2 opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  Clear Filter
+                </button>
               </div>
             </div>
 
             <!-- Table -->
-            <div
-              class="bg-slate-950 rounded-xl shadow-sm border border-slate-800 overflow-hidden"
-            >
+            <div class="bg-slate-950 rounded-xl shadow-sm border border-slate-800 overflow-hidden">
               <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-slate-800">
-                  <thead class="bg-slate-900">
+                  <thead class="bg-slate-900  overflow-hidden">
                     <tr>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
-                      >
-                        ID
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
-                      >
-                        Sender No
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
-                      >
-                        Message
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
-                      >
-                        Recipient
-                      </th>
-                      <th
-                        class="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider"
-                      >
-                        Tone
-                      </th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">ID</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Sender(s)</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Message</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Recipient</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Media</th>
+                      <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Delivered At</th>
                     </tr>
                   </thead>
-                  <tbody
-                    id="dashboard-table-body"
-                    class="bg-slate-950 divide-y divide-slate-800"
-                  ></tbody>
+                  <tbody id="dashboard-table-body" class="bg-slate-950 divide-y divide-slate-800"></tbody>
                 </table>
               </div>
             </div>
@@ -256,43 +242,156 @@
               </p>
             </div>
 
-            <div
-              class="bg-slate-950 rounded-xl shadow-sm border border-slate-800 p-8 max-w-3xl"
-            >
-              <form class="space-y-6">
-                <div>
-                  <label class="block text-sm font-medium text-slate-200 mb-2"
-                    >Recipients (comma-separated)</label
-                  >
-                  <input
-                    id="recipient-input"
-                    type="text"
-                    placeholder="e.g., +1234567890, +0987654321, +1122334455"
-                    class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  />
-                  <p class="mt-1 text-sm text-slate-400">
-                    Enter phone numbers with country code, separated by commas
-                  </p>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-slate-200 mb-2"
-                    >Import from CSV</label
-                  >
-                  <input
-                    id="csv-file-input"
-                    type="file"
-                    accept=".csv,text/csv"
-                    class="hidden"
-                  />
-                  <div
-                    id="csv-dropzone"
-                    class="relative flex flex-col items-center justify-center gap-3 w-full px-6 py-6 border border-dashed border-slate-700 bg-slate-900 rounded-xl text-center transition hover:border-emerald-500 hover:bg-slate-900/80 cursor-pointer"
-                  >
+            <div class="flex flex-row gap-8 items-start">
+              <div class="flex-1 bg-slate-950 rounded-xl shadow-sm border border-slate-800 p-8 min-w-[400px] max-w-2xl">
+                <form id="whatsapp-message-form" class="space-y-6">
+    <script>
+      // WhatsApp Message form submission via fetch
+      const whatsappForm = document.getElementById("whatsapp-message-form");
+      if (whatsappForm) {
+        whatsappForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const recipients = document.getElementById("recipient-input")?.value || "";
+          const message = document.getElementById("message-input")?.value || "";
+          const media = document.getElementById("file-path-input")?.value || "";
+
+          // Prepare data for backend (adjust keys as needed by your backend)
+          const payload = {
+            recipients,
+            message,
+            media
+          };
+
+          try {
+            const res = await fetch("http://localhost:3000/send-messages", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data && data.success) {
+              const { recipients, message, media } = data;
+              alert("Messages sent successfully!");
+              // Add sent messages to dashboardData and re-render (recipients is now an array)
+              const nextId = dashboardData.length ? Math.max(...dashboardData.map(d => d.id)) + 1 : 1;
+              const now = new Date();
+              const deliveredAt = now.getFullYear() + '-' +
+                String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                String(now.getDate()).padStart(2, '0') + ' ' +
+                String(now.getHours()).padStart(2, '0') + ':' +
+                String(now.getMinutes()).padStart(2, '0') + ':' +
+                String(now.getSeconds()).padStart(2, '0');
+              recipients.forEach((num, idx) => {
+                dashboardData.push({
+                  id: nextId + idx,
+                  sender: recipients.join(", "),
+                  message: message,
+                  recipient: num,
+                  media: media,
+                  deliveredAt: deliveredAt
+                });
+              });
+              renderDashboardTable(dashboardData);
+              localStorage.setItem("dashboardData", JSON.stringify(dashboardData));
+            } else {
+              alert(data.error || "Failed to send messages.");
+            }
+          } catch (err) {
+            alert("An error occurred while sending messages.");
+          }
+        });
+      }
+    </script>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-200 mb-2"
+                      >Recipients (comma-separated)</label
+                    >
+                    <input
+                      id="recipient-input"
+                      type="text"
+                      placeholder="e.g., +1234567890, +0987654321, +1122334455"
+                      class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                    <p class="mt-1 text-sm text-slate-400">
+                      Enter phone numbers with country code, separated by commas
+                    </p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-200 mb-2"
+                      >Import from CSV</label
+                    >
+                    <input
+                      id="csv-file-input"
+                      type="file"
+                      accept=".csv,text/csv"
+                      class="hidden"
+                    />
                     <div
-                      class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/20 text-emerald-300"
+                      id="csv-dropzone"
+                      class="relative flex flex-col items-center justify-center gap-3 w-full px-6 py-6 border border-dashed border-slate-700 bg-slate-900 rounded-xl text-center transition hover:border-emerald-500 hover:bg-slate-900/80 cursor-pointer"
+                    >
+                      <div
+                        class="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/20 text-emerald-300"
+                      >
+                        <svg
+                          class="w-6 h-6"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M4 16l4-4m0 0l4 4m-4-4v12M20 12.41V6a2 2 0 00-2-2H6a2 2 0 00-2 2v6.41a2 2 0 00.586 1.414l6.999 6.999a2 2 0 002.828 0l7-7A2 2 0 0020 12.41z"
+                          />
+                        </svg>
+                      </div>
+                      <div>
+                        <p class="text-sm font-medium text-slate-200">
+                          Drag & drop a CSV file or click to browse
+                        </p>
+                        <p class="text-xs text-slate-400 mt-1">
+                          Numbers populate Recipients, messages populate Message
+                          automatically
+                        </p>
+                      </div>
+                    </div>
+                    <p id="csv-status" class="mt-2 text-xs text-slate-400"></p>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-200 mb-2"
+                      >Message</label
+                    >
+                    <textarea
+                      id="message-input"
+                      rows="5"
+                      placeholder="Type your message here..."
+                      class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    ></textarea>
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-slate-200 mb-2"
+                      >File Path (optional)</label
+                    >
+                    <input
+                      id="file-path-input"
+                      type="text"
+                      placeholder="e.g., /path/to/file.pdf or C:\Documents\file.jpg"
+                      class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                    <p class="mt-1 text-sm text-slate-400">
+                      Upload images, videos, documents, or audio files
+                    </p>
+                  </div>
+                  <div class="flex flex-col md:flex-row justify-end gap-4">
+                    <button
+                      id="export-whatsapp-csv"
+                      type="button"
+                      class="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-8 py-3 rounded-lg transition flex items-center gap-2"
                     >
                       <svg
-                        class="w-6 h-6"
+                        class="w-5 h-5"
                         fill="none"
                         stroke="currentColor"
                         stroke-width="2"
@@ -301,70 +400,112 @@
                         <path
                           stroke-linecap="round"
                           stroke-linejoin="round"
-                          d="M4 16l4-4m0 0l4 4m-4-4v12M20 12.41V6a2 2 0 00-2-2H6a2 2 0 00-2 2v6.41a2 2 0 00.586 1.414l6.999 6.999a2 2 0 002.828 0l7-7A2 2 0 0020 12.41z"
+                          d="M12 4v16m8-8H4"
                         />
                       </svg>
-                    </div>
-                    <div>
-                      <p class="text-sm font-medium text-slate-200">
-                        Drag & drop a CSV file or click to browse
-                      </p>
-                      <p class="text-xs text-slate-400 mt-1">
-                        Numbers populate Recipients, messages populate Message
-                        automatically
-                      </p>
-                    </div>
-                  </div>
-                  <p id="csv-status" class="mt-2 text-xs text-slate-400"></p>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-slate-200 mb-2"
-                    >Message</label
-                  >
-                  <textarea
-                    id="message-input"
-                    rows="5"
-                    placeholder="Type your message here..."
-                    class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  ></textarea>
-                </div>
-                <div>
-                  <label class="block text-sm font-medium text-slate-200 mb-2"
-                    >File Path (optional)</label
-                  >
-                  <input
-                    id="file-path-input"
-                    type="text"
-                    placeholder="e.g., /path/to/file.pdf or C:\Documents\file.jpg"
-                    class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  />
-                  <p class="mt-1 text-sm text-slate-400">
-                    Upload images, videos, documents, or audio files
-                  </p>
-                </div>
-                <div class="flex justify-end">
-                  <button
-                    type="submit"
-                    class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-8 py-3 rounded-lg transition flex items-center gap-2"
-                  >
-                    <svg
-                      class="w-5 h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="2"
-                      viewBox="0 0 24 24"
+                      Export CSV
+                    </button>
+                    <button
+                      type="submit"
+                      class="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-8 py-3 rounded-lg transition flex items-center gap-2"
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    Send Messages
-                  </button>
+                      <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      Send Messages
+                    </button>
+                  </div>
+                </form>
+              </div>
+              <aside
+                class="w-[520px] bg-gradient-to-br from-slate-900 to-slate-950 border-2 border-indigo-700 rounded-2xl p-8 text-slate-200 text-base flex-shrink-0 shadow-2xl ml-0"
+              >
+              <h3 class="font-semibold text-lg mb-2 text-indigo-300">
+                CSV Import Format &amp; Requirements
+              </h3>
+              <ul class="list-disc pl-5 mb-3">
+                <li>
+                  The CSV file must have <b>three columns</b> with headings:
+                  <b>Number</b>, <b>Message</b>, <b>Media</b>.
+                </li>
+                <li>
+                  <b>Order matters:</b> First column = Number, second = Message,
+                  third = Media file path.
+                </li>
+                <li>Each row represents a WhatsApp message to send.</li>
+              </ul>
+              <h4 class="font-semibold text-slate-100 mb-1">
+                Required Conditions:
+              </h4>
+              <ul class="list-disc pl-5 mb-3">
+                <li>
+                  If any field is missing for a row, leave that column empty
+                  (e.g., <b>,,</b> for all empty).
+                </li>
+                <li>
+                  <b>Number</b> is required to send a message; if missing, that
+                  row will be ignored.
+                </li>
+                <li>
+                  <b>Message</b> is required for sending text; if missing, only
+                  media will be sent (if provided).
+                </li>
+                <li>
+                  <b>Media</b> is optional; leave empty if not sending a file.
+                </li>
+                <li>
+                  All columns must be present in the file, even if some are
+                  empty.
+                </li>
+                <li>
+                  File must include the header row:
+                  <b>Number,Message,Media</b>
+                </li>
+              </ul>
+                <div class="mt-6">
+                  <div class="font-semibold text-slate-300 mb-2">Example:</div>
+                  <div class="overflow-x-auto">
+                    <table class="min-w-full text-left text-slate-200 text-sm border border-slate-700 rounded-lg bg-slate-800 shadow">
+                      <thead>
+                        <tr class="bg-slate-900">
+                          <th class="px-4 py-2 border-b border-slate-700 font-bold">Number</th>
+                          <th class="px-4 py-2 border-b border-slate-700 font-bold">Message</th>
+                          <th class="px-4 py-2 border-b border-slate-700 font-bold">Media</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td class="px-4 py-2 border-b border-slate-700">+1234567890</td>
+                          <td class="px-4 py-2 border-b border-slate-700">Hello there!</td>
+                          <td class="px-4 py-2 border-b border-slate-700">C:\files\image.jpg</td>
+                        </tr>
+                        <tr>
+                          <td class="px-4 py-2 border-b border-slate-700">+1987654321</td>
+                          <td class="px-4 py-2 border-b border-slate-700">How are you?</td>
+                          <td class="px-4 py-2 border-b border-slate-700"></td>
+                        </tr>
+                        <tr>
+                          <td class="px-4 py-2">+1122334455</td>
+                          <td class="px-4 py-2"></td>
+                          <td class="px-4 py-2">C:\files\audio.mp3</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </form>
-            </div>
+                
+              </div>
+            </aside>
           </section>
 
           <!-- AI Generative Section -->
@@ -387,12 +528,11 @@
                     >Prompt</label
                   >
                   <textarea
+                    id="ai-prompt-input"
                     rows="3"
                     placeholder="Enter your prompt here..."
                     class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
-                  >
-Use AI to generate content, message, business names</textarea
-                  >
+                  ></textarea>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
@@ -400,14 +540,15 @@ Use AI to generate content, message, business names</textarea
                       >Language</label
                     >
                     <select
+                      id="ai-lang-select"
                       class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                     >
-                      <option disabled selected>Language</option>
-                      <option>English</option>
-                      <option>Spanish</option>
-                      <option>French</option>
-                      <option>Finnish</option>
-                      <option>German</option>
+                      <option value="" disabled selected>Language</option>
+                      <option value="English">English</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="Finnish">Finnish</option>
+                      <option value="German">German</option>
                     </select>
                   </div>
                   <div>
@@ -415,11 +556,12 @@ Use AI to generate content, message, business names</textarea
                       >Word Length</label
                     >
                     <select
+                      id="ai-wordlen-select"
                       class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                     >
-                      <option disabled selected>Word Length</option>
-                      <option>Short (50-100 words)</option>
-                      <option>Long (200-400 words)</option>
+                      <option value="" disabled selected>Word Length</option>
+                      <option value="short">Short (50-100 words)</option>
+                      <option value="long">Long (200-400 words)</option>
                     </select>
                   </div>
                   <div>
@@ -427,13 +569,14 @@ Use AI to generate content, message, business names</textarea
                       >Tone</label
                     >
                     <select
+                      id="ai-tone-select"
                       class="w-full px-4 py-3 border border-slate-700 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none"
                     >
-                      <option disabled selected>Tone</option>
-                      <option>Casual</option>
-                      <option>Professional</option>
-                      <option>Friendly</option>
-                      <option>Urgent</option>
+                      <option value="" disabled selected>Tone</option>
+                      <option value="Casual">Casual</option>
+                      <option value="Professional">Professional</option>
+                      <option value="Friendly">Friendly</option>
+                      <option value="Urgent">Urgent</option>
                     </select>
                   </div>
                 </div>
@@ -451,6 +594,43 @@ Use AI to generate content, message, business names</textarea
     </div>
 
     <script>
+      // Export WhatsApp Message form data as CSV
+      const exportBtn = document.getElementById("export-whatsapp-csv");
+      if (exportBtn) {
+        exportBtn.addEventListener("click", () => {
+          const recipients =
+            document.getElementById("recipient-input")?.value || "";
+          const message = document.getElementById("message-input")?.value || "";
+          const media = document.getElementById("file-path-input")?.value || "";
+
+          // Split recipients by comma, trim, and filter empty
+          const numbers = recipients
+            .split(",")
+            .map((n) => n.trim())
+            .filter(Boolean);
+          // If no numbers, still export one row
+          const rows = numbers.length
+            ? numbers.map((num) => [num, message, media])
+            : [["", message, media]];
+
+          let csv = "Number,Message,Media\n";
+          csv += rows
+            .map((row) =>
+              row
+                .map((cell) => '"' + (cell || "").replace(/"/g, '""') + '"')
+                .join(",")
+            )
+            .join("\n");
+
+          const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = "whatsapp_messages.csv";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        });
+      }
       // Tab switching logic
       const tabBtns = document.querySelectorAll(".tab-btn");
       const sections = {
@@ -786,143 +966,109 @@ Use AI to generate content, message, business names</textarea
       }
 
       // Dashboard filter logic
-      const dashboardData = [
-        {
-          id: 1,
-          sender: "+123466790",
-          message: "Hello! How are you?",
-          recipient: "+097457821",
-          tone: "Casual",
-        },
-        {
-          id: 2,
-          sender: "English",
-          message: "How's it going?",
-          recipient: "+123466790",
-          tone: "Casual",
-        },
-        {
-          id: 3,
-          sender: "Spanish",
-          message: "Hola! Cómo estás?",
-          recipient: "+097467821",
-          tone: "Professional",
-        },
-        {
-          id: 4,
-          sender: "French",
-          message: "Bonjour! Comment ça va?",
-          recipient: "+097457821",
-          tone: "Professional",
-        },
-        {
-          id: 5,
-          sender: "French",
-          message: "Merci beaucoup!",
-          recipient: "+123466790",
-          tone: "Friendly",
-        },
-        {
-          id: 6,
-          sender: "French",
-          message: "C'est urgent!",
-          recipient: "+123466790",
-          tone: "Urgent",
-        },
-        {
-          id: 10,
-          sender: "Frinith",
-          message: "Short (50-100 words)",
-          recipient: "+097457821",
-          tone: "Friendly",
-        },
-        {
-          id: 11,
-          sender: "Spanish",
-          message: "Gracias!",
-          recipient: "+123466790",
-          tone: "Friendly",
-        },
-        {
-          id: 12,
-          sender: "Finnith",
-          message: "Short (500 words)",
-          recipient: "+097457821",
-          tone: "Urgent",
-        },
-        {
-          id: 13,
-          sender: "German",
-          message: "Guten Tag!",
-          recipient: "+123466790",
-          tone: "Urgent",
-        },
-      ];
+
+      let dashboardData = [];
+      // Retrieve dashboardData from localStorage on page load
+      const storedDashboard = localStorage.getItem("dashboardData");
+      if (storedDashboard) {
+        try {
+          dashboardData = JSON.parse(storedDashboard);
+        } catch (e) {
+          dashboardData = [];
+        }
+      }
 
       function renderDashboardTable(data) {
         const tbody = document.getElementById("dashboard-table-body");
         tbody.innerHTML = data
-          .map(
-            (row) => `
-        <tr class="hover:bg-slate-900">
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-100">${
-            row.id
-          }</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-100">${
-            row.sender
-          }</td>
-          <td class="px-6 py-4 text-sm text-slate-200">${row.message}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-100">${
-            row.recipient
-          }</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm">
-            <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-              row.tone === "Professional"
-                ? "bg-blue-900 text-blue-200"
-                : row.tone === "Casual"
-                ? "bg-slate-800 text-slate-200"
-                : row.tone === "Friendly"
-                ? "bg-emerald-900 text-emerald-200"
-                : "bg-red-900 text-red-200"
-            }">${row.tone}</span>
-          </td>
-        </tr>
-      `
-          )
+          .map((row) => {
+            let mediaCell = '';
+            if (row.media) {
+              mediaCell = `<span class="text-xs text-slate-400">${row.media}</span>`;
+            }
+            let deliveredAtCell = row.deliveredAt ? `<span class="text-xs text-slate-400">${row.deliveredAt}</span>` : '';
+            return `
+  <tr class="hover:bg-slate-900">
+    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-100">${row.id}</td>
+    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-100">${row.sender}</td>
+    <td class="px-4 py-3 text-sm text-slate-200">${row.message}</td>
+    <td class="px-4 py-3 whitespace-nowrap text-sm text-slate-100">${row.recipient}</td>
+    <td class="px-4 py-3 text-sm text-slate-200">${mediaCell}</td>
+    <td class="px-4 py-3 text-sm text-slate-200">${deliveredAtCell}</td>
+  </tr>
+`;
+          })
           .join("");
       }
 
-      function filterDashboardTable() {
-        const sender = document
-          .getElementById("filter-sender")
-          .value.trim()
-          .toLowerCase();
-        const message = document
-          .getElementById("filter-message")
-          .value.trim()
-          .toLowerCase();
-        const tone = document
-          .getElementById("filter-tone")
-          .value.trim()
-          .toLowerCase();
 
-        const filtered = dashboardData.filter((row) => {
-          const senderMatch =
-            !sender || row.sender.toLowerCase().includes(sender);
-          const messageMatch =
-            !message || row.message.toLowerCase().includes(message);
-          const toneMatch = !tone || row.tone.toLowerCase().includes(tone);
-          return senderMatch && messageMatch && toneMatch;
-        });
-
-        renderDashboardTable(filtered);
+      function isAnyFilterApplied() {
+        return (
+          document.getElementById("filter-sender").value.trim() !== '' ||
+          document.getElementById("filter-message").value.trim() !== '' ||
+          document.getElementById("filter-media").value.trim() !== '' ||
+          document.getElementById("filter-delivered-at").value !== ''
+        );
       }
 
-      document
-        .getElementById("filter-btn")
-        .addEventListener("click", filterDashboardTable);
+      function updateClearFilterBtnState() {
+        const clearBtn = document.getElementById("clear-filter-btn");
+        if (!clearBtn) return;
+        if (isAnyFilterApplied()) {
+          clearBtn.disabled = false;
+          clearBtn.classList.remove("opacity-50", "cursor-not-allowed");
+        } else {
+          clearBtn.disabled = true;
+          clearBtn.classList.add("opacity-50", "cursor-not-allowed");
+        }
+      }
+
+      function filterDashboardTable() {
+        const sender = document.getElementById("filter-sender").value.trim().toLowerCase();
+        const message = document.getElementById("filter-message").value.trim().toLowerCase();
+        const media = document.getElementById("filter-media").value.trim().toLowerCase();
+        const deliveredAt = document.getElementById("filter-delivered-at").value;
+
+        const filtered = dashboardData.filter((row) => {
+          const senderMatch = !sender || (row.sender && row.sender.toLowerCase().includes(sender));
+          const messageMatch = !message || (row.message && row.message.toLowerCase().includes(message));
+          const mediaMatch = !media || (row.media && row.media.toLowerCase().includes(media));
+          let deliveredAtMatch = true;
+          if (deliveredAt) {
+            // row.deliveredAt is in 'YYYY-MM-DD HH:mm:ss' format
+            if (row.deliveredAt) {
+              const rowDate = row.deliveredAt.split(' ')[0];
+              deliveredAtMatch = rowDate === deliveredAt;
+            } else {
+              deliveredAtMatch = false;
+            }
+          }
+          return senderMatch && messageMatch && mediaMatch && deliveredAtMatch;
+        });
+        renderDashboardTable(filtered);
+        updateClearFilterBtnState();
+      }
+
+      function clearDashboardFilters() {
+        document.getElementById("filter-sender").value = '';
+        document.getElementById("filter-message").value = '';
+        document.getElementById("filter-media").value = '';
+        document.getElementById("filter-delivered-at").value = '';
+        renderDashboardTable(dashboardData);
+        updateClearFilterBtnState();
+      }
+
+      document.getElementById("filter-btn").addEventListener("click", filterDashboardTable);
+      document.getElementById("clear-filter-btn").addEventListener("click", clearDashboardFilters);
+
+      // Enable/disable clear filter button on input change
+      ["filter-sender", "filter-message", "filter-media", "filter-delivered-at"].forEach(id => {
+        document.getElementById(id).addEventListener("input", updateClearFilterBtnState);
+      });
+
       renderDashboardTable(dashboardData);
-    </script>
+      updateClearFilterBtnState();
+  </script>
 
     <script>
       // connect whatsapp logic
@@ -946,6 +1092,131 @@ Use AI to generate content, message, business names</textarea
             console.error("Error connecting to WhatsApp:", error);
             alert("An error occurred while connecting to WhatsApp.");
           });
+      });
+
+      // AI content generation form logic (fixed)
+      const aiForm = document.querySelector("#section-ai form");
+      const aiPromptInput = document.getElementById("ai-prompt-input");
+      const aiLangSelect = document.getElementById("ai-lang-select");
+      const aiWordLenSelect = document.getElementById("ai-wordlen-select");
+      const aiToneSelect = document.getElementById("ai-tone-select");
+
+      // Create a container for the AI response and download button
+      let aiResponseDiv = document.getElementById("ai-response");
+      if (!aiResponseDiv) {
+        aiResponseDiv = document.createElement("div");
+        aiResponseDiv.id = "ai-response";
+        aiResponseDiv.className =
+          "mt-6 bg-slate-900 border border-slate-700 rounded-lg p-6 text-slate-200";
+        aiForm.parentNode.appendChild(aiResponseDiv);
+      }
+
+
+      let downloadBtn = document.getElementById("ai-download-btn");
+      if (!downloadBtn) {
+        downloadBtn = document.createElement("button");
+        downloadBtn.id = "ai-download-btn";
+        downloadBtn.type = "button";
+        downloadBtn.className =
+          "mt-4 bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-6 py-2 rounded-lg transition hidden mr-3";
+        downloadBtn.textContent = "Download as CSV";
+        aiResponseDiv.appendChild(downloadBtn);
+      }
+
+      // Add Copy to Clipboard button
+      let copyBtn = document.getElementById("ai-copy-btn");
+      if (!copyBtn) {
+        copyBtn = document.createElement("button");
+        copyBtn.id = "ai-copy-btn";
+        copyBtn.type = "button";
+        copyBtn.className =
+          "mt-4 bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 py-2 rounded-lg transition hidden";
+        copyBtn.textContent = "Copy to Clipboard";
+        aiResponseDiv.appendChild(copyBtn);
+      }
+
+      let lastAiMessage = "";
+
+
+      aiForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        aiResponseDiv.innerHTML =
+          '<span class="text-slate-400">Generating content...</span>';
+        downloadBtn.classList.add("hidden");
+        copyBtn.classList.add("hidden");
+        lastAiMessage = "";
+        const prompt = aiPromptInput.value.trim();
+        const language = aiLangSelect.value;
+        const wordLength = aiWordLenSelect.value;
+        const tone = aiToneSelect.value;
+
+        // Validate required fields
+        if (!prompt || !language || !wordLength || !tone) {
+          aiResponseDiv.innerHTML =
+            '<span class="text-rose-400">Please fill in all fields.</span>';
+          return;
+        }
+
+        try {
+          const res = await fetch("http://localhost:3000/generate-message", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt, language, wordLength, tone }),
+          });
+          const data = await res.json();
+          if (data && data.message) {
+            lastAiMessage = data.message;
+            aiResponseDiv.innerHTML = `<div class='whitespace-pre-line mb-4'>${data.message.replace(
+              /\n/g,
+              "<br>"
+            )}</div>`;
+            aiResponseDiv.appendChild(downloadBtn);
+            aiResponseDiv.appendChild(copyBtn);
+            downloadBtn.classList.remove("hidden");
+            copyBtn.classList.remove("hidden");
+          } else {
+            aiResponseDiv.innerHTML = `<span class='text-rose-400'>${
+              data.error || "No message returned."
+            }</span>`;
+          }
+        } catch (err) {
+          aiResponseDiv.innerHTML = `<span class='text-rose-400'>Failed to generate content.</span>`;
+        }
+      });
+
+
+      downloadBtn.addEventListener("click", () => {
+        if (!lastAiMessage) return;
+        const csvContent =
+          "data:text/csv;charset=utf-8," +
+          encodeURIComponent(
+            'Message\n"' +
+              lastAiMessage.replace(/"/g, '""').replace(/\n/g, "\n") +
+              '"'
+          );
+        const link = document.createElement("a");
+        link.setAttribute("href", csvContent);
+        link.setAttribute("download", "ai_message.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      });
+
+      // Copy to Clipboard logic
+      copyBtn.addEventListener("click", async () => {
+        if (!lastAiMessage) return;
+        try {
+          await navigator.clipboard.writeText(lastAiMessage);
+          copyBtn.textContent = "Copied!";
+          setTimeout(() => {
+            copyBtn.textContent = "Copy to Clipboard";
+          }, 1200);
+        } catch (err) {
+          copyBtn.textContent = "Failed to Copy";
+          setTimeout(() => {
+            copyBtn.textContent = "Copy to Clipboard";
+          }, 1200);
+        }
       });
     </script>
   </body>

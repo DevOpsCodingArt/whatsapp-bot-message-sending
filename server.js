@@ -1,20 +1,24 @@
 const express = require("express");
 const cors = require("cors");
-const { Builder, By, until } = require("selenium-webdriver");
+const { Builder, By, until, Key } = require("selenium-webdriver");
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 const PORT = 3000;
+const ai = new GoogleGenAI({
+  apiKey: "AIzaSyAjviEUCMQBLQmn9Ewcoa6wOw0EtIfPc3Y",
+});
 
+const WORD_LENGTH_GUIDANCE = {
+  short: "Keep it between 50 and 100 words.",
+  medium: "Keep it between 100 and 200 words.",
+  long: "Keep it between 200 and 400 words.",
+};
 // Middleware
 app.use(cors());
 app.use(express.json());
 
 let driver;
-
-async function openBrowser() {
-  driver = await new Builder().forBrowser("chrome").build();
-  return driver;
-}
 
 // api for connect whatsapp
 
@@ -22,6 +26,7 @@ app.get("/connect-whatsapp", async (req, res) => {
   driver = await openBrowser();
   await driver.get("https://web.whatsapp.com");
   const element = await driver.wait(
+    //CHECJK FOR EHATSAPP BUTTON
     until.elementLocated(By.css("span[aria-label='WhatsApp']")),
     30000
   );
@@ -34,6 +39,152 @@ app.get("/connect-whatsapp", async (req, res) => {
   }
 });
 
+// api for send message
+
+app.post("/send-messages", async (req, res) => {
+  let { recipients, message, media } = req.body;
+
+  if (!driver) {
+    return res.status(400).json({
+      success: false,
+      error: "WhatsApp is not connected. Please call /connect-whatsapp first.",
+    });
+  }
+
+  try {
+    recipients = recipients.split(",");
+
+    for (const recipient of recipients) {
+      await driver.get(`https://web.whatsapp.com/send?phone=${recipient}`);
+      await driver.wait(
+        until.elementLocated(
+          By.xpath(
+            "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
+          )
+        ),
+        20000
+      );
+      //if media and msg both send krni ho to is ka liya if consition chly
+      if (media) {
+        // Find chatbox and type the message first
+        const chatbox = await driver.findElement(
+          By.xpath(
+            "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
+          )
+        );
+        await chatbox.sendKeys(message);
+        await driver.sleep(2000);
+
+        // Click the attach button
+        const attach = await driver.findElement(
+          By.xpath("//span[@data-icon='plus-rounded']")
+        );
+        await attach.click();
+        await driver.sleep(2000);
+
+        // Upload the media file
+        const mediapath = await driver.findElement(
+          By.xpath(
+            "//input[@accept='image/*,video/mp4,video/3gpp,video/quicktime']"
+          )
+        );
+        await mediapath.sendKeys(media);
+        await driver.sleep(2000);
+
+        // Click the send button for media
+        const sendbtn = await driver.findElement(
+          By.xpath("//span[@data-icon='wds-ic-send-filled']")
+        );
+        await sendbtn.click();
+        await driver.sleep(3000);
+      } else {
+        //agr media send na krna ho just msg send karna ho to else condition chaly gi
+        const chatbox = await driver.findElement(
+          By.xpath(
+            "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
+          )
+        );
+        await chatbox.sendKeys(message);
+        await driver.sleep(2000);
+        await chatbox.sendKeys(Key.ENTER);
+        await driver.sleep(3000);
+      }
+    }
+
+    res.json({ success: true, recipients, message, media });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message || err });
+  }
+});
+
+// api for ai to generate message
+app.post("/generate-message", async (req, res) => {
+  try {
+    const { prompt, language, wordLength, tone } = req.body;
+
+    if (!prompt || !prompt.trim()) {
+      return res.status(400).json({ error: "Prompt is required." });
+    }
+
+    const aiResponse = await main({ prompt, language, wordLength, tone });
+
+    if (!aiResponse) {
+      return res
+        .status(502)
+        .json({ error: "AI service returned an empty response." });
+    }
+
+    res.json({ message: aiResponse });
+  } catch (error) {
+    console.error("generate-message error:", error);
+    res.status(500).json({ error: "Failed to generate AI content." });
+  }
+});
+
+// Function to open browser
+async function openBrowser() {
+  driver = await new Builder().forBrowser("chrome").build();
+  return driver;
+}
+
+// Function to generate message using AI
+const main = async function ({ prompt, language, wordLength, tone }) {
+  //ternery condition
+
+  const languageClause = language
+    ? `Write the email in ${language}.`
+    : "Write the email in English.";
+  const toneClause = tone
+    ? `Adopt a ${tone.toLowerCase()} tone.`
+    : "Use a friendly and professional tone.";
+  const lengthClause =
+    WORD_LENGTH_GUIDANCE[wordLength] || "Keep the length under 200 words.";
+
+  const systemPrompt = `Act as an expert email marketer. Craft a concise email about: "${prompt}". ${toneClause} ${languageClause} ${lengthClause} Do not include a subject line. Provide plain text only.`;
+
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: systemPrompt,
+  });
+
+  // Try to extract the generated text from Gemini API response
+  // Gemini v2.5-flash returns: response.candidates[0].content.parts[0].text
+  let text = "";
+  try {
+    if (response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      text = response.candidates[0].content.parts[0].text;
+    } else if (response?.response?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      text = response.response.candidates[0].content.parts[0].text;
+    } else if (typeof response?.text === "function") {
+      text = await response.text();
+    } else if (typeof response?.response?.text === "function") {
+      text = await response.response.text();
+    }
+  } catch (e) {
+    console.error("Error extracting AI text:", e);
+  }
+  return text || "No message generated.";
+};
 // Start server
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);

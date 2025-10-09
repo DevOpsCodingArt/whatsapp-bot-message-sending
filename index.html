@@ -3,8 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>WhatsApp Bot Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+  <title>WhatsApp Bot Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS for Excel parsing -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   </head>
 
   <body
@@ -189,7 +191,7 @@
             </div>
 
             <div class="bg-slate-950 rounded-xl shadow-sm border border-slate-800 overflow-hidden">
-              <div class="overflow-x-auto">
+              <div class="overflow-x-auto overflow-y-hidden">
                 <table class="min-w-full divide-y divide-slate-800">
                   <thead class="bg-slate-900  overflow-hidden">
                     <tr>
@@ -322,7 +324,7 @@
                     <input
                       id="csv-file-input"
                       type="file"
-                      accept=".csv,text/csv"
+                      accept=".csv,.xls,.xlsx,.xlsm,.xlsb,.ods,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12,application/vnd.ms-excel.sheet.binary.macroEnabled.12,application/vnd.oasis.opendocument.spreadsheet"
                       class="hidden"
                     />
                     <div
@@ -348,11 +350,10 @@
                       </div>
                       <div>
                         <p class="text-sm font-medium text-slate-200">
-                          Drag & drop a CSV file or click to browse
+                          Drag & drop an Excel file (.csv, .xls, .xlsx, .xlsm, .xlsb, .ods) or click to browse
                         </p>
                         <p class="text-xs text-slate-400 mt-1">
-                          Numbers populate Recipients, messages populate Message
-                          automatically
+                          Numbers populate Recipients, messages populate Message automatically
                         </p>
                       </div>
                     </div>
@@ -430,11 +431,11 @@
                 class="w-[520px] bg-gradient-to-br from-slate-900 to-slate-950 border-2 border-indigo-700 rounded-2xl p-8 text-slate-200 text-base flex-shrink-0 shadow-2xl ml-0"
               >
               <h3 class="font-semibold text-lg mb-2 text-indigo-300">
-                CSV Import Format &amp; Requirements
+                Excel Import Format &amp; Requirements
               </h3>
               <ul class="list-disc pl-5 mb-3">
                 <li>
-                  The CSV file must have <b>three columns</b> with headings:
+                  The Excel file must have <b>three columns</b> with headings:
                   <b>Number</b>, <b>Message</b>, <b>Media</b>.
                 </li>
                 <li>
@@ -1029,29 +1030,43 @@
           setCsvStatus("No file selected.", "error");
           return;
         }
-
         const file = fileList[0];
-        if (!file.name.toLowerCase().endsWith(".csv")) {
-          setCsvStatus("Please upload a CSV file.", "error");
+        const fileName = file.name.toLowerCase();
+        const isExcel = /\.(csv|xlsx|xls|xlsm|xlsb|ods)$/.test(fileName);
+        if (!isExcel) {
+          setCsvStatus("Please upload a valid Excel file (.csv, .xls, .xlsx, .xlsm, .xlsb, .ods).", "error");
           return;
         }
-
-        setCsvStatus("Processing CSV...", "info");
-
+        setCsvStatus("Processing file...", "info");
         const reader = new FileReader();
         reader.onload = (event) => {
           try {
-            const text = event.target?.result;
-            processCSVText(typeof text === "string" ? text : "");
+            let data = event.target.result;
+            if (fileName.endsWith('.csv')) {
+              processCSVText(typeof data === "string" ? data : "");
+            } else {
+              // Parse Excel file using SheetJS
+              let workbook = XLSX.read(data, { type: 'binary' });
+              let firstSheet = workbook.SheetNames[0];
+              let sheet = workbook.Sheets[firstSheet];
+              let json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+              // Convert to CSV-like text for existing logic
+              let csvText = json.map(row => row.join(',')).join('\n');
+              processCSVText(csvText);
+            }
           } catch (error) {
-            console.error("Error processing CSV:", error);
-            setCsvStatus("Failed to process CSV file.", "error");
+            console.error("Error processing file:", error);
+            setCsvStatus("Failed to process file.", "error");
           }
         };
         reader.onerror = () => {
-          setCsvStatus("Could not read the CSV file.", "error");
+          setCsvStatus("Could not read the file.", "error");
         };
-        reader.readAsText(file);
+        if (fileName.endsWith('.csv')) {
+          reader.readAsText(file);
+        } else {
+          reader.readAsBinaryString(file);
+        }
         if (csvFileInput) {
           csvFileInput.value = "";
         }

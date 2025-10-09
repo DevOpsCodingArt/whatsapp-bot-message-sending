@@ -19,9 +19,9 @@
         <div class="p-6 border-b border-slate-800">
           <div class="flex items-center gap-3">
             <div
-              class="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center text-white text-xl"
+              class="w-10 overflow-hidden h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center text-white text-xl"
             >
-              📱
+              <img src="https://png.pngtree.com/png-vector/20220707/ourmid/pngtree-chatbot-robot-concept-chat-bot-png-image_5632381.png" alt="">
             </div>
             <div>
               <h1 class="text-lg font-bold text-slate-100">WhatsApp Bot</h1>
@@ -292,6 +292,10 @@
               submission.message = responseMessage;
               submission.media = responseMedia;
               finalizeSubmissionRecords(submission, responseRecipients);
+              // Clear fields after sending
+              document.getElementById("recipient-input").value = "";
+              document.getElementById("message-input").value = "";
+              document.getElementById("file-path-input").value = "";
             } else {
               notify(data.error || "Failed to send messages.");
               removeActiveSubmission(submission);

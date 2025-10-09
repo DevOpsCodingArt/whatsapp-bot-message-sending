@@ -799,7 +799,7 @@
 
         dashboardData.push({
           id: nextId,
-          sender: submission.recipients.join(", "),
+          sender: submission.recipients[recipientIndex],
           message: submission.message,
           recipient: submission.recipients[recipientIndex],
           media: submission.media,
@@ -1106,6 +1106,17 @@
       if (storedDashboard) {
         try {
           dashboardData = JSON.parse(storedDashboard);
+          if (Array.isArray(dashboardData)) {
+            dashboardData = dashboardData.map((row) => {
+              if (!row || typeof row !== "object") return row;
+              const normalizedRow = { ...row };
+              if (normalizedRow.recipient && normalizedRow.sender !== normalizedRow.recipient) {
+                normalizedRow.sender = normalizedRow.recipient;
+              }
+              return normalizedRow;
+            });
+            localStorage.setItem("dashboardData", JSON.stringify(dashboardData));
+          }
         } catch (e) {
           dashboardData = [];
         }

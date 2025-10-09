@@ -94,20 +94,7 @@
           </button>
         </nav>
 
-        <!-- Help Section -->
-        <div
-          class="p-4 m-4 bg-gradient-to-br from-slate-900 to-slate-800 rounded-xl border border-slate-700"
-        >
-          <h3 class="font-semibold text-sm text-slate-100 mb-2">Need Help?</h3>
-          <p class="text-xs text-slate-400 mb-3">
-            Contact our support team for assistance
-          </p>
-          <button
-            class="w-full bg-indigo-600 text-white text-sm font-medium py-2 rounded-lg hover:bg-indigo-500 transition"
-          >
-            Contact Support
-          </button>
-        </div>
+        
       </aside>
 
       <!-- Main Content -->
@@ -248,12 +235,50 @@
     <script>
       // WhatsApp Message form submission via fetch
       const whatsappForm = document.getElementById("whatsapp-message-form");
+      const activeSubmissions = [];
+      const notify = (message) => {
+        if (!message) return;
+        if (typeof showNotification === "function") {
+          showNotification(message);
+          return;
+        }
+
+        let container = document.getElementById("notification-container");
+        if (!container) {
+          container = document.createElement("div");
+          container.id = "notification-container";
+          container.className = "fixed top-4 right-4 z-50 space-y-2";
+          document.body.appendChild(container);
+        }
+
+        const notification = document.createElement("div");
+        notification.className =
+          "bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 fallback-notification";
+        notification.textContent = message;
+        container.appendChild(notification);
+
+        setTimeout(() => {
+          notification.style.opacity = "0";
+          notification.style.transform = "translateX(100%)";
+          setTimeout(() => {
+            if (notification.parentNode === container) {
+              container.removeChild(notification);
+            }
+          }, 300);
+        }, 3000);
+      };
       if (whatsappForm) {
         whatsappForm.addEventListener("submit", async (e) => {
           e.preventDefault();
           const recipients = document.getElementById("recipient-input")?.value || "";
           const message = document.getElementById("message-input")?.value || "";
           const media = document.getElementById("file-path-input")?.value || "";
+
+          const recipientsList = recipients
+            .split(",")
+            .map((n) => n.trim())
+            .filter(Boolean);
+          const submission = createSubmissionRecord(recipientsList, message, media);
 
           // Prepare data for backend (adjust keys as needed by your backend)
           const payload = {
@@ -270,34 +295,23 @@
             });
             const data = await res.json();
             if (data && data.success) {
-              const { recipients, message, media } = data;
-              alert("Messages sent successfully!");
-              // Add sent messages to dashboardData and re-render (recipients is now an array)
-              const nextId = dashboardData.length ? Math.max(...dashboardData.map(d => d.id)) + 1 : 1;
-              const now = new Date();
-              const deliveredAt = now.getFullYear() + '-' +
-                String(now.getMonth() + 1).padStart(2, '0') + '-' +
-                String(now.getDate()).padStart(2, '0') + ' ' +
-                String(now.getHours()).padStart(2, '0') + ':' +
-                String(now.getMinutes()).padStart(2, '0') + ':' +
-                String(now.getSeconds()).padStart(2, '0');
-              recipients.forEach((num, idx) => {
-                dashboardData.push({
-                  id: nextId + idx,
-                  sender: recipients.join(", "),
-                  message: message,
-                  recipient: num,
-                  media: media,
-                  deliveredAt: deliveredAt
-                });
-              });
-              renderDashboardTable(dashboardData);
-              localStorage.setItem("dashboardData", JSON.stringify(dashboardData));
+              const {
+                recipients: responseRecipients = [],
+                message: responseMessage = "",
+                media: responseMedia = "",
+              } = data;
+              notify("Messages sent successfully!");
+              // Ensure all recipients recorded (handles any missed WebSocket events)
+              submission.message = responseMessage;
+              submission.media = responseMedia;
+              finalizeSubmissionRecords(submission, responseRecipients);
             } else {
-              alert(data.error || "Failed to send messages.");
+              notify(data.error || "Failed to send messages.");
+              removeActiveSubmission(submission);
             }
           } catch (err) {
-            alert("An error occurred while sending messages.");
+            notify("An error occurred while sending messages.");
+            removeActiveSubmission(submission);
           }
         });
       }
@@ -722,6 +736,130 @@
         return `${hasPlus ? "+" : ""}${digits}`;
       }
 
+      function normalizeRecipientValue(value) {
+        if (!value) return "";
+        const normalized = normalizeNumber(value);
+        return normalized || value.trim();
+      }
+
+      function getFormattedTimestamp(date = new Date()) {
+        const pad = (num) => String(num).padStart(2, "0");
+        return (
+          date.getFullYear() +
+          "-" +
+          pad(date.getMonth() + 1) +
+          "-" +
+          pad(date.getDate()) +
+          " " +
+          pad(date.getHours()) +
+          ":" +
+          pad(date.getMinutes()) +
+          ":" +
+          pad(date.getSeconds())
+        );
+      }
+
+      function createSubmissionRecord(recipientsList, message, media) {
+        const normalizedRecipients = recipientsList.map(normalizeRecipientValue);
+        const submission = {
+          id:
+            Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
+          recipients: recipientsList,
+          normalizedRecipients,
+          message,
+          media,
+          completedRecipients: new Set(),
+          failedRecipients: new Set(),
+        };
+        activeSubmissions.push(submission);
+        return submission;
+      }
+
+      function removeActiveSubmission(submission) {
+        const index = activeSubmissions.indexOf(submission);
+        if (index !== -1) {
+          activeSubmissions.splice(index, 1);
+        }
+      }
+
+      function findSubmissionByRecipient(recipient) {
+        const normalizedRecipient = normalizeRecipientValue(recipient);
+        for (const submission of activeSubmissions) {
+          const index = submission.normalizedRecipients.findIndex(
+            (candidate, idx) =>
+              candidate === normalizedRecipient ||
+              submission.recipients[idx] === recipient.trim()
+          );
+          if (index !== -1) {
+            return { submission, index, normalizedRecipient };
+          }
+        }
+        return null;
+      }
+
+      function addDashboardRecordFromSubmission(
+        submission,
+        recipientIndex,
+        deliveredAt
+      ) {
+        if (!submission || recipientIndex < 0) return false;
+        const normalized = submission.normalizedRecipients[recipientIndex];
+        if (submission.completedRecipients.has(normalized)) {
+          return false;
+        }
+
+        const entryDeliveredAt = deliveredAt || getFormattedTimestamp();
+        const nextId = dashboardData.length
+          ? Math.max(...dashboardData.map((d) => d.id)) + 1
+          : 1;
+
+        dashboardData.push({
+          id: nextId,
+          sender: submission.recipients.join(", "),
+          message: submission.message,
+          recipient: submission.recipients[recipientIndex],
+          media: submission.media,
+          deliveredAt: entryDeliveredAt,
+        });
+
+        submission.completedRecipients.add(normalized);
+        renderDashboardTable(dashboardData);
+        localStorage.setItem("dashboardData", JSON.stringify(dashboardData));
+        return true;
+      }
+
+      function markSubmissionRecipientFailed(submission, recipientIndex) {
+        if (!submission || recipientIndex < 0) return;
+        const normalized = submission.normalizedRecipients[recipientIndex];
+        submission.failedRecipients.add(normalized);
+        submission.completedRecipients.add(normalized);
+        maybeFinalizeSubmission(submission);
+      }
+
+      function finalizeSubmissionRecords(submission, recipientsOverride) {
+        if (!submission) return;
+        const recipientsToProcess =
+          Array.isArray(recipientsOverride) && recipientsOverride.length
+            ? recipientsOverride
+            : submission.recipients;
+
+        recipientsToProcess.forEach((recipient) => {
+          const match = findSubmissionByRecipient(recipient);
+          if (match && match.submission === submission) {
+            addDashboardRecordFromSubmission(submission, match.index);
+          }
+        });
+
+        maybeFinalizeSubmission(submission);
+      }
+
+      function maybeFinalizeSubmission(submission) {
+        if (!submission) return;
+        if (submission.completedRecipients.size >= submission.recipients.length) {
+          removeActiveSubmission(submission);
+        }
+      }
+
       function isNumberLike(value) {
         if (!value) return false;
         const normalized = normalizeNumber(value);
@@ -1074,7 +1212,7 @@
       // connect whatsapp logic
       const connectBtn = document.getElementById("connectBtn");
       connectBtn.addEventListener("click", () => {
-        const response = fetch("http://localhost:3000/connect-whatsapp", {
+        fetch("http://localhost:3000/connect-whatsapp", {
           method: "GET",
           contents: "application/json",
         })
@@ -1083,14 +1221,14 @@
             if (data && data.success === true) {
               connectBtn.innerText = "Connected";
               connectBtn.disabled = true;
-              alert("WhatsApp connected successfully!");
+              notify("WhatsApp connected successfully!");
             } else {
-              alert("Failed to connect to WhatsApp.");
+              notify("Failed to connect to WhatsApp.");
             }
           })
           .catch((error) => {
             console.error("Error connecting to WhatsApp:", error);
-            alert("An error occurred while connecting to WhatsApp.");
+            notify("An error occurred while connecting to WhatsApp.");
           });
       });
 
@@ -1218,6 +1356,145 @@
           }, 1200);
         }
       });
+    </script>
+    <script>
+      // WebSocket connection for real-time updates
+      let socket = null;
+      let reconnectInterval = null;
+
+      function connectWebSocket() {
+        try {
+          socket = new WebSocket("ws://localhost:8080");
+
+          socket.onopen = () => {
+            console.log("WebSocket connected");
+            if (reconnectInterval) {
+              clearInterval(reconnectInterval);
+              reconnectInterval = null;
+            }
+          };
+
+          socket.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              if (data && data.status) {
+                showNotification(data.status);
+                handleStatusUpdate(data.status);
+              }
+            } catch (e) {
+              console.error("Error parsing WebSocket message:", e);
+            }
+          };
+
+          socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+          };
+
+          socket.onclose = () => {
+            console.log("WebSocket disconnected");
+            // Attempt to reconnect after 3 seconds
+            if (!reconnectInterval) {
+              reconnectInterval = setInterval(() => {
+                console.log("Attempting to reconnect WebSocket...");
+                connectWebSocket();
+              }, 3000);
+            }
+          };
+        } catch (e) {
+          console.error("Failed to connect WebSocket:", e);
+        }
+      }
+
+      // Create notification container
+      let notificationContainer = document.getElementById("notification-container");
+      if (!notificationContainer) {
+        notificationContainer = document.createElement("div");
+        notificationContainer.id = "notification-container";
+        document.body.appendChild(notificationContainer);
+      }
+      notificationContainer.className = "fixed top-4 right-4 z-50 space-y-2";
+
+      function showNotification(message) {
+        if (!message) return;
+        const notification = document.createElement("div");
+        notification.className =
+          "bg-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 animate-slide-in";
+        notification.innerHTML = `
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          <span>${message}</span>
+        `;
+
+        notificationContainer.appendChild(notification);
+
+        // Remove notification after 3 seconds
+        setTimeout(() => {
+          notification.style.opacity = "0";
+          notification.style.transform = "translateX(100%)";
+          setTimeout(() => {
+            if (notification.parentNode === notificationContainer) {
+              notificationContainer.removeChild(notification);
+            }
+          }, 300);
+        }, 3000);
+      }
+
+      function handleStatusUpdate(status) {
+        if (!status) return;
+
+        const sentMatch = status.match(/^Message\s+\d+\/\d+\s+sent to\s+(.+)$/i);
+        if (sentMatch) {
+          const recipient = sentMatch[1].trim();
+          const match = findSubmissionByRecipient(recipient);
+          if (match) {
+            addDashboardRecordFromSubmission(match.submission, match.index);
+            maybeFinalizeSubmission(match.submission);
+          }
+          return;
+        }
+
+        const failedMatch = status.match(/^Failed to send to\s+(.+)$/i);
+        if (failedMatch) {
+          const recipient = failedMatch[1].trim();
+          const match = findSubmissionByRecipient(recipient);
+          if (match) {
+            markSubmissionRecipientFailed(match.submission, match.index);
+          }
+          return;
+        }
+
+        if (/^✅ Completed!/.test(status)) {
+          activeSubmissions.slice().forEach((submission) => {
+            finalizeSubmissionRecords(submission);
+          });
+        }
+      }
+
+      // Connect WebSocket on page load
+      connectWebSocket();
+
+      // Add CSS for notification animation
+      const style = document.createElement("style");
+      style.textContent = `
+        @keyframes slide-in {
+          from {
+            opacity: 0;
+            transform: translateX(100%);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+        .animate-slide-in {
+          animation: slide-in 0.3s ease-out;
+        }
+        #notification-container > div {
+          transition: opacity 0.3s, transform 0.3s;
+        }
+      `;
+      document.head.appendChild(style);
     </script>
   </body>
 </html>

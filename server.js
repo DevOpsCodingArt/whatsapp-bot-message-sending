@@ -2,12 +2,26 @@ const express = require("express");
 const cors = require("cors");
 const { Builder, By, until, Key } = require("selenium-webdriver");
 const { GoogleGenAI } = require("@google/genai");
-
+const ws = require("ws");
 const app = express();
 const PORT = 3000;
 const ai = new GoogleGenAI({
   apiKey: "AIzaSyAjviEUCMQBLQmn9Ewcoa6wOw0EtIfPc3Y",
 });
+const webSocketServer = new ws.Server({ port: 8080 });
+
+webSocketServer.on("connection", () => {
+  console.log("WebSocket connection established");
+});
+
+const broadcastStatus = (status) => {
+  if (!status) return;
+  webSocketServer.clients.forEach((client) => {
+    if (client.readyState === ws.OPEN) {
+      client.send(JSON.stringify({ status }));
+    }
+  });
+};
 
 const WORD_LENGTH_GUIDANCE = {
   short: "Keep it between 50 and 100 words.",
@@ -42,7 +56,7 @@ app.get("/connect-whatsapp", async (req, res) => {
 // api for send message
 
 app.post("/send-messages", async (req, res) => {
-  let { recipients, message, media } = req.body;
+  const { recipients = "", message = "", media = "" } = req.body || {};
 
   if (!driver) {
     return res.status(400).json({
@@ -52,67 +66,108 @@ app.post("/send-messages", async (req, res) => {
   }
 
   try {
-    recipients = recipients.split(",");
+    const toArray = (value) => {
+      if (Array.isArray(value)) return value;
+      if (typeof value === "string") {
+        return value
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter(Boolean);
+      }
+      return [];
+    };
 
-    for (const recipient of recipients) {
-      await driver.get(`https://web.whatsapp.com/send?phone=${recipient}`);
-      await driver.wait(
-        until.elementLocated(
-          By.xpath(
-            "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
-          )
-        ),
-        20000
-      );
-      //if media and msg both send krni ho to is ka liya if consition chly
-      if (media) {
-        // Find chatbox and type the message first
+    const recipientsList = toArray(recipients);
+
+    if (!recipientsList.length) {
+      return res.status(400).json({
+        success: false,
+        error: "No valid recipients provided.",
+      });
+    }
+
+    broadcastStatus(
+      `Starting to send messages to ${recipientsList.length} recipient(s)`
+    );
+
+    let sentCount = 0;
+
+    for (const recipient of recipientsList) {
+      try {
+        await driver.get(`https://web.whatsapp.com/send?phone=${recipient}`);
+        await driver.wait(
+          until.elementLocated(
+            By.xpath(
+              "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
+            )
+          ),
+          20000
+        );
+
         const chatbox = await driver.findElement(
           By.xpath(
             "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
           )
         );
-        await chatbox.sendKeys(message);
-        await driver.sleep(2000);
 
-        // Click the attach button
-        const attach = await driver.findElement(
-          By.xpath("//span[@data-icon='plus-rounded']")
-        );
-        await attach.click();
-        await driver.sleep(2000);
+        if (media) {
+          if (message) {
+            await chatbox.sendKeys(message);
+            await driver.sleep(2000);
+          }
 
-        // Upload the media file
-        const mediapath = await driver.findElement(
-          By.xpath(
-            "//input[@accept='image/*,video/mp4,video/3gpp,video/quicktime']"
-          )
-        );
-        await mediapath.sendKeys(media);
-        await driver.sleep(2000);
+          const attach = await driver.findElement(
+            By.xpath("//span[@data-icon='plus-rounded']")
+          );
+          await attach.click();
+          await driver.sleep(2000);
 
-        // Click the send button for media
-        const sendbtn = await driver.findElement(
-          By.xpath("//span[@data-icon='wds-ic-send-filled']")
+          const mediapath = await driver.findElement(
+            By.xpath(
+              "//input[@accept='image/*,video/mp4,video/3gpp,video/quicktime']"
+            )
+          );
+          await mediapath.sendKeys(media);
+          await driver.sleep(2000);
+
+          const sendbtn = await driver.findElement(
+            By.xpath("//span[@data-icon='wds-ic-send-filled']")
+          );
+          await sendbtn.click();
+          await driver.sleep(3000);
+        } else if (message) {
+          await chatbox.sendKeys(message);
+          await driver.sleep(2000);
+          await chatbox.sendKeys(Key.ENTER);
+          await driver.sleep(3000);
+        } else {
+          throw new Error("No message or media provided to send.");
+        }
+
+        sentCount += 1;
+
+        broadcastStatus(
+          `Message ${sentCount}/${recipientsList.length} sent to ${recipient}`
         );
-        await sendbtn.click();
-        await driver.sleep(3000);
-      } else {
-        //agr media send na krna ho just msg send karna ho to else condition chaly gi
-        const chatbox = await driver.findElement(
-          By.xpath(
-            "//div[@role='textbox' and @contenteditable='true' and @aria-placeholder='Type a message']"
-          )
-        );
-        await chatbox.sendKeys(message);
-        await driver.sleep(2000);
-        await chatbox.sendKeys(Key.ENTER);
-        await driver.sleep(3000);
+      } catch (error) {
+        console.error(`Failed to send message to ${recipient}:`, error.message);
+        broadcastStatus(`Failed to send to ${recipient}`);
       }
     }
 
-    res.json({ success: true, recipients, message, media });
+    broadcastStatus(
+      `✅ Completed! Sent ${sentCount}/${recipientsList.length} messages`
+    );
+
+    res.json({
+      success: true,
+      recipients: recipientsList,
+      message,
+      media,
+      sentCount,
+    });
   } catch (err) {
+    console.error("Error in send-messages:", err);
     res.status(500).json({ success: false, error: err.message || err });
   }
 });

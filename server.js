@@ -28,19 +28,15 @@ const WORD_LENGTH_GUIDANCE = {
   medium: "Keep it between 100 and 200 words.",
   long: "Keep it between 200 and 400 words.",
 };
-// Middleware
 app.use(cors());
 app.use(express.json());
 
 let driver;
 
-// api for connect whatsapp
-
 app.get("/connect-whatsapp", async (req, res) => {
   driver = await openBrowser();
   await driver.get("https://web.whatsapp.com");
   const element = await driver.wait(
-    //CHECJK FOR EHATSAPP BUTTON
     until.elementLocated(By.css("span[aria-label='WhatsApp']")),
     30000
   );
@@ -52,8 +48,6 @@ app.get("/connect-whatsapp", async (req, res) => {
       .json({ success: false, error: "WhatsApp element not found" });
   }
 });
-
-// api for send message
 
 app.post("/send-messages", async (req, res) => {
   const { recipients = "", message = "", media = "" } = req.body || {};
@@ -172,7 +166,6 @@ app.post("/send-messages", async (req, res) => {
   }
 });
 
-// api for ai to generate message
 app.post("/generate-message", async (req, res) => {
   try {
     const { prompt, language, wordLength, tone } = req.body;
@@ -196,16 +189,12 @@ app.post("/generate-message", async (req, res) => {
   }
 });
 
-// Function to open browser
 async function openBrowser() {
   driver = await new Builder().forBrowser("chrome").build();
   return driver;
 }
 
-// Function to generate message using AI
 const main = async function ({ prompt, language, wordLength, tone }) {
-  //ternery condition
-
   const languageClause = language
     ? `Write the email in ${language}.`
     : "Write the email in English.";
@@ -222,8 +211,6 @@ const main = async function ({ prompt, language, wordLength, tone }) {
     contents: systemPrompt,
   });
 
-  // Try to extract the generated text from Gemini API response
-  // Gemini v2.5-flash returns: response.candidates[0].content.parts[0].text
   let text = "";
   try {
     if (response?.candidates?.[0]?.content?.parts?.[0]?.text) {
@@ -240,7 +227,6 @@ const main = async function ({ prompt, language, wordLength, tone }) {
   }
   return text || "No message generated.";
 };
-// Start server
 app.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });

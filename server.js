@@ -6,7 +6,7 @@ const ws = require("ws");
 const app = express();
 const PORT = 3000;
 const ai = new GoogleGenAI({
-  apiKey: "AIzaSyAjviEUCMQBLQmn9Ewcoa6wOw0EtIfPc3Y",
+  apiKey: "",
 });
 const webSocketServer = new ws.Server({ port: 8080 });
 
